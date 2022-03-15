@@ -7,7 +7,7 @@ FPS = 30
 DT = 1
 screen = pygame.display.set_mode((1200, 900))
 FONT = pygame.font.SysFont("Arial", 40)
-NUMBER_OF_BALLS = 10
+NUMBER_OF_BALLS = 20
 
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
@@ -19,9 +19,9 @@ BLACK = (0, 0, 0)
 COLORS = [RED, BLUE, YELLOW, GREEN, MAGENTA, CYAN]
 
 
-def new_ball():
+def create_object(object_type):
     """
-    draws new ball
+    draws new object
     """
     x = randint(200, 1000)
     y = randint(200, 800)
@@ -29,33 +29,39 @@ def new_ball():
     vx = randint(-5, 5)
     vy = randint(-5, 5)
     color = COLORS[randint(0, 5)]
-    pygame.draw.circle(screen, color, (x, y), r)
-    ball = [x, y, r, vx, vy, color]
-    return ball
+
+    if object_type == "ball":
+        pygame.draw.circle(screen, color, (x, y), r)
+
+    if object_type == "square":
+        pygame.draw.rect(screen, color, (x - r, y - r, 2 * r, 2 * r))
+
+    new_object = [x, y, r, vx, vy, color, ]
+    return new_object
 
 
-def move_ball(ball):
+def move_object(the_object):
     """
-    moves ball
+    moves balls
     """
-    ball[0] += ball[3] * DT
-    ball[1] += ball[4] * DT
-    if ball[0] <= ball[2] or ball[0] >= 1200 - ball[2]:
-        ball[3] = -ball[3]
-    if ball[1] <= ball[2] or ball[1] >= 900 - ball[2]:
-        ball[4] = -ball[4]
-    pygame.draw.circle(screen, ball[5], (ball[0], ball[1]), ball[2])
-    return ball
+    the_object[0] += the_object[3] * DT
+    the_object[1] += the_object[4] * DT
+    if the_object[0] <= the_object[2] or the_object[0] >= 1200 - the_object[2]:
+        the_object[3] = -the_object[3]
+    if the_object[1] <= the_object[2] or the_object[1] >= 900 - the_object[2]:
+        the_object[4] = -the_object[4]
+    pygame.draw.circle(screen, the_object[5], (the_object[0], the_object[1]), the_object[2])
 
 
 score = 0
 balls = []
+squares = []
 
 clock = pygame.time.Clock()
 finished = False
 
 for i in range(NUMBER_OF_BALLS):
-    balls.append(new_ball())
+    balls.append(create_object("ball"))
 
 while not finished:
     screen.fill(BLACK)
@@ -73,10 +79,10 @@ while not finished:
                 if (pygame.mouse.get_pos()[0] - ball[0]) ** 2 + (pygame.mouse.get_pos()[1] - ball[1]) ** 2 <= \
                         ball[2] ** 2:
                     score += 1
-                    balls[balls.index(ball)] = new_ball()
+                    balls[balls.index(ball)] = create_object("ball")
 
     for ball in balls:
-        ball = move_ball(ball)
+        move_object(ball)
 
     score_surface = FONT.render("Score: {}".format(score), False, (255, 255, 255))
     screen.blit(score_surface, (0, 0))
