@@ -11,9 +11,9 @@ for i in range(4):
     turtle.right(90)
 
 
-number_of_turtles = 50
+number_of_turtles = 20
 steps_of_time_number = 200
-dt = 0.3
+dt = 0.1
 
 trtl_speed = []
 pool = [turtle.Turtle(shape="circle", visible=False) for i in range(number_of_turtles)]
