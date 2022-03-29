@@ -23,14 +23,14 @@ GRAVITY_ACCELERATION = 1
 
 
 class Ball:
-    def __init__(self, screen: pygame.Surface, x=40, y=450):
+    def __init__(self, the_screen: pygame.Surface, x=40, y=450):
         """ Конструктор класса ball
 
         Args:
         x - начальное положение мяча по горизонтали
         y - начальное положение мяча по вертикали
         """
-        self.screen = screen
+        self.screen = the_screen
         self.x = x
         self.y = y
         self.r = 10
@@ -46,15 +46,26 @@ class Ball:
         self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
         и стен по краям окна (размер окна 800х600).
         """
-        # TODO collisions with walls
+
         self.x += self.vx
         self.vy += GRAVITY_ACCELERATION
         self.y += self.vy
 
-        if self.x + self.r >= 800 or self.x - self.r <= 0:
-            self.vx = - self.vx
-        if self.y - self.r <= 0 or self.y + self.r >= 600:
+        if self.y >= HEIGHT - self.r:
+            self.y = HEIGHT - self.r
             self.vy = - self.vy
+
+        if self.y <= self.r:
+            self.y = self.r
+            self.vy = - self.vy
+
+        if self.x >= WIDTH - self.r:
+            self.x = WIDTH - self.r
+            self.vx = - self.vx
+
+        if self.x <= self.r:
+            self.x = self.r
+            self.vx = - self.vx
 
     def draw(self):
         pygame.draw.circle(
@@ -110,7 +121,7 @@ class Gun:
             if event.pos[0] - 50 != 0:
                 self.an = math.atan((event.pos[1] - 450) / (event.pos[0] - 50))
             else:
-                self.an = math.pi/2
+                self.an = math.pi / 2
         if self.f2_on:
             self.color = RED
         else:
@@ -118,9 +129,10 @@ class Gun:
 
     def draw(self):
 
-    # FIXME don't know how to do it
+        # FIXME don't know how to do it
         pygame.draw.line(screen, self.color, (40, 450),
-                         (40+self.f2_power*math.cos(self.an), 450+self.f2_power*math.sin(self.an)), width=5)
+                         (40 + self.f2_power * math.cos(self.an), 450 + self.f2_power * math.sin(self.an)), width=5)
+        pygame.draw.circle(screen, self.color, (40, 450), 5)
 
     def power_up(self):
         if self.f2_on:
