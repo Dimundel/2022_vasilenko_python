@@ -1,4 +1,5 @@
 import math
+import random
 from random import choice
 
 import pygame
@@ -83,6 +84,8 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
+        if (self.x-obj.x)**2+(self.y-obj.y)**2 <= (self.r+obj.r)**2:
+            return True
         # FIXME
         return False
 
@@ -144,24 +147,29 @@ class Gun:
 
 
 class Target:
-    # self.points = 0
-    # self.live = 1
+    def __init__(self):
+        self.points = 0
+        self.live = 1
+        self.x = None
+        self.y = None
+        self.r = None
+        self.color = None
     # FIXME: don't work!!! How to call this functions when object is created?
-    # self.new_target()
+        self.new_target()
 
     def new_target(self):
         """ Инициализация новой цели. """
-        x = self.x = rnd(600, 780)
-        y = self.y = rnd(300, 550)
-        r = self.r = rnd(2, 50)
-        color = self.color = RED
+        self.x = random.randint(600, 780)
+        self.y = random.randint(300, 550)
+        self.r = random.randint(2, 50)
+        self.color = RED
 
     def hit(self, points=1):
         """Попадание шарика в цель."""
         self.points += points
 
     def draw(self):
-        ...
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.r)
 
 
 pygame.init()
@@ -196,7 +204,7 @@ while not finished:
     for b in balls:
         b.move()
         if b.hittest(target) and target.live:
-            target.live = 0
+            # target.live = 0
             target.hit()
             target.new_target()
     gun.power_up()
