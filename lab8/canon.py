@@ -30,7 +30,7 @@ AIR_RESISTANCE = 1 / 100
 
 
 class Ball:
-    def __init__(self, the_screen: pygame.Surface, x=40, y=450):
+    def __init__(self, the_screen, x, y):
         """ Конструктор класса ball
 
         Args:
@@ -99,14 +99,20 @@ class Ball:
 
 class Gun:
     def __init__(self, the_screen):
+        self.x = 0
+        self.y = pygame.mouse.get_pos()[1]
         self.screen = the_screen
         self.f2_power = 10
-        self.f2_on = 0
-        self.an = 1
+        self.f2_on = False
+        self.angle = 1
         self.color = GREY
 
+    def move(self):
+        if not pygame.mouse.get_pressed()[0]:
+            self.y = pygame.mouse.get_pos()[1]
+
     def fire2_start(self):
-        self.f2_on = 1
+        self.f2_on = True
 
     def fire2_end(self, the_event, balls_array, bullets_num):
         """Выстрел мячом.
@@ -115,31 +121,31 @@ class Gun:
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
         bullets_num += 1
-        new_ball = Ball(self.screen)
+        new_ball = Ball(self.screen, self.x, self.y)
         new_ball.r += 5
-        self.an = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
-        new_ball.vx = self.f2_power * math.cos(self.an)
-        new_ball.vy = self.f2_power * math.sin(self.an)
+        self.angle = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
+        new_ball.vx = self.f2_power * math.cos(self.angle)
+        new_ball.vy = self.f2_power * math.sin(self.angle)
         balls_array.append(new_ball)
-        self.f2_on = 0
+        self.f2_on = False
         self.f2_power = 10
 
     def targetting(self, the_event):
         """Прицеливание. Зависит от положения мыши."""
         if the_event:
-            if the_event.pos[0] - 50 != 0:
-                self.an = math.atan((the_event.pos[1] - 450) / (the_event.pos[0] - 50))
+            if the_event.pos[0] - self.x != 0:
+                self.angle = math.atan((the_event.pos[1] - self.y) / (the_event.pos[0] - self.x))
             else:
-                self.an = math.pi / 2
+                self.angle = math.pi / 2
         if self.f2_on:
             self.color = RED
         else:
             self.color = GREY
 
     def draw(self):
-        pygame.draw.line(screen, self.color, (40, 450),
-                         (40 + self.f2_power * math.cos(self.an), 450 + self.f2_power * math.sin(self.an)), width=5)
-        pygame.draw.circle(screen, self.color, (40, 450), 5)
+        pygame.draw.line(screen, self.color, (self.x, self.y),
+                         (self.x + self.f2_power * math.cos(self.angle), self.y + self.f2_power * math.sin(self.angle)), width=5)
+        pygame.draw.circle(screen, self.color, (self.x, self.y), 20)
 
     def power_up(self):
         if self.f2_on:
@@ -234,6 +240,7 @@ while not finished:
     for target in targets:
         target.move()
 
+    gun.move()
     gun.power_up()
 
 pygame.quit()
