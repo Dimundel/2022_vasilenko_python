@@ -25,7 +25,8 @@ WIDTH = 800
 HEIGHT = 600
 
 NUM_OF_TARGETS = 3
-GRAVITY_ACCELERATION = 2
+GRAVITY_ACCELERATION = 3
+AIR_RESISTANCE = 1 / 100
 
 
 class Ball:
@@ -53,8 +54,9 @@ class Ball:
         и стен по краям окна (размер окна 800х600).
         """
 
+        self.vx += -abs(AIR_RESISTANCE) * self.vx
         self.x += self.vx
-        self.vy += GRAVITY_ACCELERATION
+        self.vy += GRAVITY_ACCELERATION - abs(AIR_RESISTANCE) * self.vy
         self.y += self.vy
 
         if self.y >= HEIGHT - self.r:
