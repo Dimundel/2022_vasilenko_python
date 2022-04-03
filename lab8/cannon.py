@@ -29,31 +29,29 @@ GRAVITY_ACCELERATION = 3
 AIR_RESISTANCE = 1 / 100
 
 
-class Ball:
+class CannonBall:
     def __init__(self, the_screen, x, y):
-        """ Конструктор класса ball
-
-        Args:
-        x - начальное положение мяча по горизонтали
-        y - начальное положение мяча по вертикали
-        """
         self.screen = the_screen
         self.x = x
         self.y = y
-        self.r = 10
+        self.r = 15
         self.vx = 0
         self.vy = 0
         self.color = choice(GAME_COLORS)
         self.live = 30
 
+    def draw(self):
+        pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
+
+    def hittest(self, obj):
+        if (self.x - obj.x) ** 2 + (self.y - obj.y) ** 2 <= (self.r + obj.r) ** 2:
+            return True
+
+        return False
+
+
+class Projectile(CannonBall):
     def move(self):
-        """Переместить мяч по прошествии единицы времени.
-
-        Метод описывает перемещение мяча за один кадр перерисовки. То есть, обновляет значения
-        self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
-        и стен по краям окна (размер окна 800х600).
-        """
-
         self.vx += -abs(AIR_RESISTANCE) * self.vx
         self.x += self.vx
         self.vy += GRAVITY_ACCELERATION - abs(AIR_RESISTANCE) * self.vy
@@ -75,26 +73,15 @@ class Ball:
             self.x = self.r
             self.vx = - self.vx
 
-    def draw(self):
-        pygame.draw.circle(
-            self.screen,
-            self.color,
-            (self.x, self.y),
-            self.r
-        )
 
-    def hittest(self, obj):
-        """Функция проверяет сталкивалкивается ли данный обьект с целью, описываемой в обьекте obj.
+class Hitscan(CannonBall):
+    def __init__(self, the_screen, x, y):
+        CannonBall.__init__(self, the_screen, x, y)
+        self.r = 5
+        self.vx = 50
 
-        Args:
-            obj: Обьект, с которым проверяется столкновение.
-        Returns:
-            Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
-        """
-        if (self.x - obj.x) ** 2 + (self.y - obj.y) ** 2 <= (self.r + obj.r) ** 2:
-            return True
-
-        return False
+    def move(self):
+        self.x += self.vx
 
 
 class Gun:
@@ -114,24 +101,20 @@ class Gun:
     def fire2_start(self):
         self.f2_on = True
 
-    def fire2_end(self, the_event, balls_array, bullets_num):
-        """Выстрел мячом.
-
-        Происходит при отпускании кнопки мыши.
-        Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
-        """
+    def fire2_end(self, the_event, cannonball_type, balls_array, bullets_num):
         bullets_num += 1
-        new_ball = Ball(self.screen, self.x, self.y)
-        new_ball.r += 5
+        new_ball = cannonball_type(self.screen, self.x, self.y)
         self.angle = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
-        new_ball.vx = self.f2_power * math.cos(self.angle)
-        new_ball.vy = self.f2_power * math.sin(self.angle)
+
+        if cannonball_type == Projectile:
+            new_ball.vx = self.f2_power * math.cos(self.angle)
+            new_ball.vy = self.f2_power * math.sin(self.angle)
+
         balls_array.append(new_ball)
         self.f2_on = False
         self.f2_power = 10
 
     def targetting(self, the_event):
-        """Прицеливание. Зависит от положения мыши."""
         if the_event:
             if the_event.pos[0] - self.x != 0:
                 self.angle = math.atan((the_event.pos[1] - self.y) / (the_event.pos[0] - self.x))
@@ -144,7 +127,8 @@ class Gun:
 
     def draw(self):
         pygame.draw.line(screen, self.color, (self.x, self.y),
-                         (self.x + self.f2_power * math.cos(self.angle), self.y + self.f2_power * math.sin(self.angle)), width=5)
+                         (self.x + self.f2_power * math.cos(self.angle), self.y + self.f2_power * math.sin(self.angle)),
+                         width=10)
         pygame.draw.circle(screen, self.color, (self.x, self.y), 20)
 
     def power_up(self):
@@ -176,7 +160,6 @@ class Target:
         self.y += self.vy
 
     def new_target(self):
-        """ Инициализация новой цели. """
         self.x = random.randint(600, 780)
         self.y = random.randint(300, 550)
         self.vy = random.randint(1, 10)
@@ -224,9 +207,13 @@ while not finished:
         if event.type == pygame.QUIT:
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            gun.fire2_start()
+            if event.button == 1:
+                gun.fire2_start()
         elif event.type == pygame.MOUSEBUTTONUP:
-            gun.fire2_end(event, balls, bullets)
+            if event.button == 1:
+                gun.fire2_end(event, Projectile, balls, bullets)
+            elif event.button == 3:
+                gun.fire2_end(event, Hitscan, balls, bullets)
         elif event.type == pygame.MOUSEMOTION:
             gun.targetting(event)
 
