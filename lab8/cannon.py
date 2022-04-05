@@ -337,7 +337,7 @@ while not finished:
         elif event.type == pygame.MOUSEMOTION:
             player_gun.targetting(event)
 
-    game_processing(score, finished)
+    score, finished = game_processing(score, finished)
 
 pygame.quit()
 
