@@ -1,6 +1,5 @@
 import math
 import random
-from random import choice
 
 import pygame
 
@@ -17,6 +16,7 @@ CYAN = 0x00FFCC
 BLACK = (0, 0, 0)
 WHITE = 0xFFFFFF
 GREY = 0x7D7D7D
+DARK_GREY = 0x2F2F2F
 GAME_COLORS = [RED, BLUE, YELLOW, GREEN, MAGENTA, CYAN]
 
 FONT = pygame.font.SysFont("Comic Sans MS", 32)
@@ -30,15 +30,16 @@ AIR_RESISTANCE = 1 / 100
 
 
 class CannonBall:
-    def __init__(self, the_screen, x, y):
+    def __init__(self, the_screen, x, y, is_player=True):
         self.screen = the_screen
         self.x = x
         self.y = y
         self.r = 15
         self.vx = 0
         self.vy = 0
-        self.color = choice(GAME_COLORS)
-        self.live = 30
+        self.color = random.choice(GAME_COLORS)
+        self.live = 150
+        self.is_player = is_player
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
@@ -48,6 +49,11 @@ class CannonBall:
             return True
 
         return False
+
+    def lose_live(self, bullets_list):
+        self.live -= 1
+        if self.live <= 0:
+            bullets_list.remove(self)
 
 
 class Projectile(CannonBall):
@@ -73,6 +79,8 @@ class Projectile(CannonBall):
             self.x = self.r
             self.vx = - self.vx
 
+        self.lose_live(bullets)
+
 
 class Hitscan(CannonBall):
     def __init__(self, the_screen, x, y):
@@ -82,17 +90,26 @@ class Hitscan(CannonBall):
 
     def move(self):
         self.x += self.vx
+        self.y += self.vy
 
 
 class Gun:
-    def __init__(self, the_screen):
-        self.x = 0
-        self.y = pygame.mouse.get_pos()[1]
+    def __init__(self, the_screen, x, y):
+        self.x = x
+        self.y = y
         self.screen = the_screen
+        self.angle = 0
+        self.color = GREY
+
+
+class PlayerGun(Gun):
+    def __init__(self, the_screen):
+        Gun.__init__(self, the_screen, 0, pygame.mouse.get_pos()[1])
         self.f2_power = 10
         self.f2_on = False
-        self.angle = 1
         self.color = GREY
+        self.f2_power = 10
+        self.f2_on = False
 
     def move(self):
         if not pygame.mouse.get_pressed()[0]:
@@ -104,7 +121,7 @@ class Gun:
     def fire2_end(self, the_event, cannonball_type, balls_array, bullets_num):
         bullets_num += 1
         new_ball = cannonball_type(self.screen, self.x, self.y)
-        self.angle = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
+        # self.angle = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
 
         if cannonball_type == Projectile:
             new_ball.vx = self.f2_power * math.cos(self.angle)
@@ -140,6 +157,25 @@ class Gun:
             self.color = GREY
 
 
+class EnemyGun(Gun):
+    def __init__(self, the_screen, x, y):
+        Gun.__init__(self, the_screen, x, y)
+        self.color = DARK_GREY
+        self.v = 30
+
+    def shoot(self, balls_array, the_player):
+        to_shoot = random.randint(0, 30)
+        if not to_shoot:
+            angle = -math.atan((the_player.y - self.y) / (the_player.x - self.x)) - math.pi / 2
+            new_ball = Hitscan(self.screen, self.x, self.y)
+            balls_array.append(new_ball)
+            new_ball.vy = self.v * math.cos(angle)
+            new_ball.vx = self.v * math.sin(angle)
+
+    def draw(self):
+        pygame.draw.circle(screen, self.color, (self.x, self.y), 20)
+
+
 class Target:
     def __init__(self, the_screen):
         self.x = None
@@ -164,25 +200,68 @@ class Target:
         self.y = random.randint(300, 550)
         self.vy = random.randint(1, 10)
         self.r = random.randint(5, 50)
-        self.color = RED
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
         pygame.draw.circle(self.screen, BLACK, (self.x, self.y), self.r, 2)
 
 
+class NormalTarget(Target):
+    def __init__(self, the_screen):
+        Target.__init__(self, the_screen)
+        self.color = RED
+
+
+class ChaoticTarget(Target):
+    def __init__(self, the_screen):
+        Target.__init__(self, the_screen)
+        self.color = BLUE
+
+    def move(self):
+        Target.move(self)
+        self.y += self.vy
+        to_change_direction = random.randint(0, 30)
+        if not to_change_direction:
+            self.vy = -self.vy
+
+
+class DissapearingTarget(Target):
+    def __init__(self, the_screen):
+        Target.__init__(self, the_screen)
+        self.color = GREEN
+        self.is_visible = True
+
+    def move(self):
+        Target.move(self)
+        to_dissappear = random.randint(0, 30)
+        if not to_dissappear:
+            self.is_visible = not self.is_visible
+
+    def draw(self):
+        if self.is_visible:
+            Target.draw(self)
+
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-bullets = 0
+num_bullets = 0
 score = 0
-balls = []
+bullets = []
 targets = []
+enemy_guns = []
 
 clock = pygame.time.Clock()
-gun = Gun(screen)
+player_gun = PlayerGun(screen)
+enemy_gun1 = EnemyGun(screen, 800, 150)
+enemy_gun2 = EnemyGun(screen, 800, 450)
+enemy_guns.append(enemy_gun1)
+enemy_guns.append(enemy_gun2)
 
-for target in range(NUM_OF_TARGETS):
-    new_target = Target(screen)
-    targets.append(new_target)
+new_target = NormalTarget(screen)
+targets.append(new_target)
+new_target = ChaoticTarget(screen)
+targets.append(new_target)
+new_target = DissapearingTarget(screen)
+targets.append(new_target)
 
 finished = False
 
@@ -192,13 +271,16 @@ while not finished:
     score_surface = FONT.render("Score: {}".format(score), False, BLACK)
     screen.blit(score_surface, (0, 0))
 
-    gun.draw()
+    player_gun.draw()
 
     for target in targets:
         target.draw()
 
-    for b in balls:
+    for b in bullets:
         b.draw()
+
+    for enemy_gun in enemy_guns:
+        enemy_gun.draw()
 
     pygame.display.update()
     clock.tick(FPS)
@@ -208,16 +290,16 @@ while not finished:
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                gun.fire2_start()
+                player_gun.fire2_start()
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                gun.fire2_end(event, Projectile, balls, bullets)
+                player_gun.fire2_end(event, Projectile, bullets, num_bullets)
             elif event.button == 3:
-                gun.fire2_end(event, Hitscan, balls, bullets)
+                player_gun.fire2_end(event, Hitscan, bullets, num_bullets)
         elif event.type == pygame.MOUSEMOTION:
-            gun.targetting(event)
+            player_gun.targetting(event)
 
-    for b in balls:
+    for b in bullets:
         b.move()
         for target in targets:
             if b.hittest(target):
@@ -227,7 +309,10 @@ while not finished:
     for target in targets:
         target.move()
 
-    gun.move()
-    gun.power_up()
+    for enemy_gun in enemy_guns:
+        enemy_gun.shoot(bullets, player_gun)
+
+    player_gun.move()
+    player_gun.power_up()
 
 pygame.quit()
