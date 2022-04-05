@@ -30,7 +30,9 @@ AIR_RESISTANCE = 1 / 100
 
 
 class CannonBall:
-    def __init__(self, the_screen, x, y, is_player=True):
+    """Cannonballs which are shot by gus"""
+
+    def __init__(self, the_screen, x, y):
         self.screen = the_screen
         self.x = x
         self.y = y
@@ -39,18 +41,19 @@ class CannonBall:
         self.vy = 0
         self.color = random.choice(GAME_COLORS)
         self.live = 150
-        self.is_player = is_player
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (self.x, self.y), self.r)
 
     def hittest(self, obj):
+        """checks collisions between self and obj"""
         if (self.x - obj.x) ** 2 + (self.y - obj.y) ** 2 <= (self.r + obj.r) ** 2:
             return True
 
         return False
 
     def lose_live(self, bullets_list):
+        """destroys self after period of time"""
         self.live -= 1
         if self.live <= 0:
             bullets_list.remove(self)
@@ -100,6 +103,7 @@ class Gun:
         self.screen = the_screen
         self.angle = 0
         self.color = GREY
+        self.r = 20
 
 
 class PlayerGun(Gun):
@@ -112,16 +116,18 @@ class PlayerGun(Gun):
         self.f2_on = False
 
     def move(self):
+        """moves gun while mouse is not pressed"""
         if not pygame.mouse.get_pressed()[0]:
             self.y = pygame.mouse.get_pos()[1]
 
     def fire2_start(self):
+        """starts gun targetting"""
         self.f2_on = True
 
-    def fire2_end(self, the_event, cannonball_type, balls_array, bullets_num):
+    def fire2_end(self, cannonball_type, balls_array, bullets_num):
+        """shoots cannonball"""
         bullets_num += 1
-        new_ball = cannonball_type(self.screen, self.x, self.y)
-        # self.angle = math.atan2((the_event.pos[1] - new_ball.y), (the_event.pos[0] - new_ball.x))
+        new_ball = cannonball_type(self.screen, self.x + self.r + 4, self.y)
 
         if cannonball_type == Projectile:
             new_ball.vx = self.f2_power * math.cos(self.angle)
@@ -132,6 +138,7 @@ class PlayerGun(Gun):
         self.f2_power = 10
 
     def targetting(self, the_event):
+        """does gun targetting animation"""
         if the_event:
             if the_event.pos[0] - self.x != 0:
                 self.angle = math.atan((the_event.pos[1] - self.y) / (the_event.pos[0] - self.x))
@@ -146,9 +153,10 @@ class PlayerGun(Gun):
         pygame.draw.line(screen, self.color, (self.x, self.y),
                          (self.x + self.f2_power * math.cos(self.angle), self.y + self.f2_power * math.sin(self.angle)),
                          width=10)
-        pygame.draw.circle(screen, self.color, (self.x, self.y), 20)
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.r)
 
     def power_up(self):
+        """increases start velocity of cannonball"""
         if self.f2_on:
             if self.f2_power < 100:
                 self.f2_power += 1
@@ -161,9 +169,10 @@ class EnemyGun(Gun):
     def __init__(self, the_screen, x, y):
         Gun.__init__(self, the_screen, x, y)
         self.color = DARK_GREY
-        self.v = 30
+        self.v = 20
 
     def shoot(self, balls_array, the_player):
+        """shoots to player's gun coordinates"""
         to_shoot = random.randint(0, 30)
         if not to_shoot:
             angle = -math.atan((the_player.y - self.y) / (the_player.x - self.x)) - math.pi / 2
@@ -173,7 +182,7 @@ class EnemyGun(Gun):
             new_ball.vx = self.v * math.sin(angle)
 
     def draw(self):
-        pygame.draw.circle(screen, self.color, (self.x, self.y), 20)
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.r)
 
 
 class Target:
@@ -196,6 +205,7 @@ class Target:
         self.y += self.vy
 
     def new_target(self):
+        """re-creates the target"""
         self.x = random.randint(600, 780)
         self.y = random.randint(300, 550)
         self.vy = random.randint(1, 10)
@@ -251,8 +261,8 @@ enemy_guns = []
 
 clock = pygame.time.Clock()
 player_gun = PlayerGun(screen)
-enemy_gun1 = EnemyGun(screen, 800, 150)
-enemy_gun2 = EnemyGun(screen, 800, 450)
+enemy_gun1 = EnemyGun(screen, 400, 0)
+enemy_gun2 = EnemyGun(screen, 400, 600)
 enemy_guns.append(enemy_gun1)
 enemy_guns.append(enemy_gun2)
 
@@ -265,22 +275,50 @@ targets.append(new_target)
 
 finished = False
 
+
+def draw():
+    player_gun.draw()
+
+    for the_target in targets:
+        the_target.draw()
+
+    for the_b in bullets:
+        the_b.draw()
+
+    for the_enemy_gun in enemy_guns:
+        the_enemy_gun.draw()
+
+
+def game_processing(the_score, the_finished):
+    """moves cannonballs, guns, targets, checks collisions"""
+    for the_b in bullets:
+        the_b.move()
+        for the_target in targets:
+            if the_b.hittest(the_target):
+                the_target.new_target()
+                the_score += 1
+            if the_b.hittest(player_gun):
+                the_finished = True
+
+    for the_target in targets:
+        the_target.move()
+
+    for the_enemy_gun in enemy_guns:
+        the_enemy_gun.shoot(bullets, player_gun)
+
+    player_gun.move()
+    player_gun.power_up()
+
+    return the_score, the_finished
+
+
 while not finished:
     screen.fill(WHITE)
 
     score_surface = FONT.render("Score: {}".format(score), False, BLACK)
     screen.blit(score_surface, (0, 0))
 
-    player_gun.draw()
-
-    for target in targets:
-        target.draw()
-
-    for b in bullets:
-        b.draw()
-
-    for enemy_gun in enemy_guns:
-        enemy_gun.draw()
+    draw()
 
     pygame.display.update()
     clock.tick(FPS)
@@ -293,26 +331,15 @@ while not finished:
                 player_gun.fire2_start()
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                player_gun.fire2_end(event, Projectile, bullets, num_bullets)
+                player_gun.fire2_end(Projectile, bullets, num_bullets)
             elif event.button == 3:
-                player_gun.fire2_end(event, Hitscan, bullets, num_bullets)
+                player_gun.fire2_end(Hitscan, bullets, num_bullets)
         elif event.type == pygame.MOUSEMOTION:
             player_gun.targetting(event)
 
-    for b in bullets:
-        b.move()
-        for target in targets:
-            if b.hittest(target):
-                target.new_target()
-                score += 1
-
-    for target in targets:
-        target.move()
-
-    for enemy_gun in enemy_guns:
-        enemy_gun.shoot(bullets, player_gun)
-
-    player_gun.move()
-    player_gun.power_up()
+    game_processing(score, finished)
 
 pygame.quit()
+
+print("Game Over!")
+print("Your score: {}".format(score))
